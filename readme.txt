@@ -3,7 +3,7 @@ Contributors: Percona
 Donate link: http://www.percona.com/
 Tags: search, sphinx
 Requires at least: 2.5.1
-Tested up to: 2.1
+Tested up to: 2.6.1
 Stable tag: r_1-0
 
 This software replaces Wordpress's built-in search functionality with
