@@ -4,7 +4,7 @@ Donate link: http://www.ivinco.com/
 Tags: search, sphinx
 Requires at least: 2.5.1
 Tested up to: 2.6.1
-Stable tag: r_1-0
+Stable tag: r_1-1
 
 This software replaces Wordpress's built-in search functionality with
 the Sphinx Search Engine, which gives high-performance, relevant
