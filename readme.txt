@@ -1,6 +1,6 @@
 === WordPress Sphinx Search Plugin ===
-Contributors: Percona
-Donate link: http://www.percona.com/
+Contributors: Ivinco
+Donate link: http://www.ivinco.com/
 Tags: search, sphinx
 Requires at least: 2.5.1
 Tested up to: 2.6.1
@@ -43,7 +43,7 @@ Backend features
   * Prefix before Posts, Comments and Pages title
   * List of phrases to cut from search results
 
-- Sphinx daemon áonfiguration:
+- Sphinx daemon configuration:
  * Sphinx index name
  * Port
  * Configuration file
@@ -55,10 +55,10 @@ Backend features
 - Sphinx Search service installation: You can automatically install or reinstall Sphinx Search service through web interface
 
 E-mail:
-wpsphinx@percona.com
+info@ivinco.com
 
 Website:
-http://www.percona.com
+http://www.ivinco.com/software/
 
 == Installation ==
 
