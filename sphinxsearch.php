@@ -1,13 +1,18 @@
 <?php
 /*
-Plugin Name: Sphinx Search
-Plugin URI: http://percona.com
+Plugin Name: WordPress Sphinx Search Plugin
+Plugin URI: http://www.ivinco.com/software/wordpress-sphinx-search-plugin/
 Description: Power of Sphinx Search Engine for Your Blog!
-Version: 0.4
-Author: &copy; Percona Ltd
-Author URI: http://percona.com
+Version: 2.0
+Author: Ivinco
+Author URI: http://www.ivinco.com/
+License: A GPL2
 
-	Copyright 2008  &copy; Percona Ltd  (email : office@percona.com)
+    WordPress Sphinx Search Plugin by Ivinco (opensource@ivinco.com), 2011.
+    If you need commercial support, or if you’d like this plugin customized for your needs, we can help.
+
+    Visit plugin website for the latest news:
+    http://www.ivinco.com/software/wordpress-sphinx-search-plugin  
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,10 +35,20 @@ Author URI: http://percona.com
 define('SPHINXSEARCH_PLUGIN_DIR', dirname(__FILE__));
 
 /**
- * Define path to Sphinx Install Directory 
+ * Define path to Sphinx Install Directory
+ * Sphinx will install in Wordpress default upload directory
  *
  */
-define('SPHINXSEARCH_SPHINX_INSTALL_DIR', dirname($_SERVER['DOCUMENT_ROOT']) .'/sphinx');
+$uploads = wp_upload_dir();
+$uploaddir = $uploads['basedir'];
+if (empty($uploaddir) ){
+    $uploaddir = get_option( 'upload_path' );
+    if (empty($uploaddir)){
+        $uploaddir = WP_CONTENT_DIR . '/uploads';
+    }
+}
+
+define('SPHINXSEARCH_SPHINX_INSTALL_DIR', $uploaddir.'/sphinx');
 
 /**
  * Use latest sphinx API from Sphinx distributive directory 
@@ -48,15 +63,24 @@ include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/sphinxsearch_config.php');
 include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/sphinxsearch_frontend.php');
 include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/sphinxsearch_backend.php');
 include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/sphinxsearch_sphinxinstall.php');
+
+include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/wizard-controller.php');
+include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/sphinx-service.php');
+include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/sphinx-view.php');
+
+include_once(SPHINXSEARCH_PLUGIN_DIR.'/widgets/latest-searches.php');
+include_once(SPHINXSEARCH_PLUGIN_DIR.'/widgets/top-searches.php');
+include_once(SPHINXSEARCH_PLUGIN_DIR.'/widgets/search-sidebar.php');
 /**
  * load tags - each tag you can use in your theme template
  * see README
  */
 include_once(SPHINXSEARCH_PLUGIN_DIR.'/tags/sphinxsearch_tags.php');
-     	
+
 /**
  * main Sphinx Search object
- */ 
+ */
+
 $defaultObjectSphinxSearch = new SphinxSearch();
 
 class SphinxSearch{
@@ -82,8 +106,10 @@ class SphinxSearch{
 	 * @return SphinxSearch
 	 */
 	function SphinxSearch()
-	{		
+	{
+
 		$this->config = new SphinxSearch_Config();
+                $this->sphinxService = new SphinxService($this->config);
 		$this->backend = new SphinxSearch_BackEnd($this->config);		
 		$this->frontend = new SphinxSearch_FrontEnd($this->config);
 		
@@ -96,24 +122,52 @@ class SphinxSearch{
 		//return number of found posts
 		add_filter('found_posts', array(&$this, 'found_posts'));
 		
-		//content filters 
-		add_filter('post_link', array(&$this, 'post_link'));
-		add_filter('the_permalink', array(&$this, 'the_permalink'));		
+		//content filters 		
 		add_filter('wp_title', array(&$this, 'wp_title'));
-		add_filter('the_content', array(&$this, 'the_content'));
-		add_filter('the_author', array(&$this, 'the_author'));
-		add_filter('the_time', array(&$this, 'the_time'));
 				
 		//bind neccessary actions
+                add_filter('post_link', array(&$this, 'post_link'));
+                add_filter('the_permalink', array(&$this, 'the_permalink'));
+                add_filter('the_title', array(&$this, 'the_title'));
+                add_filter('the_content', array(&$this, 'the_content'));
+                add_filter('the_author', array(&$this, 'the_author'));
+                add_filter('the_time', array(&$this, 'the_time'));
+
+               // add_action('loop_start',  array(&$this, 'add_actions_filters'));
+                add_action('loop_end',  array(&$this, 'remove_actions_filters'));
 		
 		//action to prepare admin menu
 		add_action('admin_menu', array(&$this, 'options_page'));
+                add_action('admin_init', array(&$this, 'admin_init'));
 		
 		//frontend actions
 		add_action('wp_insert_post', array(&$this, 'wp_insert_post'));
 		add_action('comment_post', array(&$this, 'comment_post'));
 		add_action('delete_post', array(&$this, 'delete_post'));
+
+                //widgets
+                add_action( 'widgets_init', array(&$this, 'load_widgets') );
+
 	}
+
+        function add_actions_filters()
+        {
+            
+        }
+
+        function remove_actions_filters()
+        {
+            remove_filter( 'posts_request', array(&$this, 'posts_request') );
+            remove_filter( 'posts_results', array(&$this, 'posts_results') );
+            remove_filter( 'found_posts', array(&$this, 'found_posts') );
+            remove_filter( 'post_link', array(&$this, 'post_link') );
+            remove_filter( 'the_permalink', array(&$this, 'the_permalink') );
+            remove_filter( 'the_title', array(&$this, 'the_title') );
+            remove_filter( 'the_content', array(&$this, 'the_content') );
+            remove_filter( 'the_author', array(&$this, 'the_author') );
+            remove_filter( 'the_time', array(&$this, 'the_time') );
+
+        }
 	
 	/**
 	 * Replace post time to commen time
@@ -124,8 +178,10 @@ class SphinxSearch{
 	 */
 	function the_time($the_time, $d='')
 	{
-		if (!is_search()) return $the_time;		
-		return $this->frontend->the_time($the_time, $d);
+            if (!$this->_sphinxRunning()){
+                return $the_time;
+            }
+            return $this->frontend->the_time($the_time, $d);
 	}
 	
 	/**
@@ -136,12 +192,14 @@ class SphinxSearch{
 	 */
 	function the_author($display_name)
 	{
-		if (!is_search()) return $display_name;		
-		return $this->frontend->the_author($display_name);
+            if (!$this->_sphinxRunning()){
+		return $display_name;
+            }
+            return $this->frontend->the_author($display_name);
 	}
 	
 	/**
-	 * Correct date time for comment records in search results
+	 * Correct link in search results
 	 *
 	 * @param string $permalink
 	 * @param object $post usually null so we use global post object
@@ -149,8 +207,10 @@ class SphinxSearch{
 	 */
 	function post_link($permalink, $post=null)
 	{
-		if (!is_search()) return $permalink;		
-		return $this->frontend->post_link($permalink, $post);
+            if (!$this->_sphinxRunning()){
+                return $permalink;
+            }
+            return $this->frontend->post_link($permalink, $post);
 	}
 	
 	/**
@@ -161,30 +221,37 @@ class SphinxSearch{
 	 */
 	function the_content($content = '')
 	{
-		if (!is_search()) return $content;
-		$content = $this->frontend->the_content($content);
-		return $content;
+            if (!$this->_sphinxRunning()){
+                return $content;
+            }
+            $content = $this->frontend->the_content($content);
+            return $content;
 	}
 	
 	/**
 	 * Query Sphinx for search result and parse results return empty query for WP
 	 *
-	 * @param string $query
+	 * @param string $sqlQuery - default sql query to fetch posts
 	 * @return string $query
 	 */
-	function posts_request($query)
-	{	
-		if (!is_search()) return $query;
-		$_GET['s'] = stripslashes($_GET['s']);
-		//Qeuery Sphinx for Search results
-		if ($this->frontend->query() ){
-			$this->frontend->parse_results();
-		}
-		//return empty query
-		return '';
+	function posts_request($sqlQuery)
+	{
+            if (!$this->_sphinxRunning()){
+                return $sqlQuery;
+            }
+            $_GET['s'] = stripslashes($_GET['s']);
+            //Qeuery Sphinx for Search results
+            if ($this->frontend->query() ){
+                $this->frontend->parse_results();
+            }
+            //returning empty string we disabled to run default query
+            //instead of that we add our owen search results 
+            return '';
 	}
-	
-	/**
+
+
+
+        /**
 	 * Generate new posts based on search results
 	 *
 	 * @param object $posts
@@ -192,7 +259,9 @@ class SphinxSearch{
 	 */
 	function posts_results($posts)
 	{			
-		if (!is_search() ) return $posts;
+		if (!$this->_sphinxRunning()){
+                    return $posts;
+                }
 		return  $this->frontend->posts_results();
 	}
 	
@@ -204,7 +273,9 @@ class SphinxSearch{
 	 */
 	function found_posts($found_posts=0)
 	{
-		if (!is_search()) return $found_posts;
+		if (!$this->_sphinxRunning()){
+                        return $found_posts;
+                }
 		return $this->frontend->post_count;
 	}
 	
@@ -216,7 +287,9 @@ class SphinxSearch{
 	 */
 	function the_permalink($permalink = '')
 	{
-		if (!is_search()) return $permalink;		
+		if (!$this->_sphinxRunning()){
+                    return $permalink;
+                }
 		return $this->frontend->the_permalink($permalink);
 	}
 	
@@ -228,10 +301,20 @@ class SphinxSearch{
 	 */
 	function wp_title($title = '')
 	{
-		if (!is_search()) return $title;		
+		if (!$this->_sphinxRunning()){
+                    return $title;
+                }
 		return $this->frontend->wp_title($title);
 	}
-	
+
+        function the_title($title = '')
+	{
+		if (!$this->_sphinxRunning()){
+                    return $title;
+                }
+		return $this->frontend->the_title($title);
+	}
+
 	/**
 	 * Set flag for cron job to remind about update
 	 *
@@ -240,8 +323,9 @@ class SphinxSearch{
 	 */
 	function wp_insert_post($post_id, $post='')
 	{
-		$this->config->need_reindex(true);
-		$this->config->update_admin_options();
+		$this->sphinxService->need_reindex(true);
+                $options['sphinx_need_reindex'] = true;
+		$this->config->update_admin_options($options);
 	}
 	
 	/**
@@ -279,46 +363,63 @@ class SphinxSearch{
      *
      */
     function options_page()
-    {
+    {        
     	if (function_exists('add_options_page')) {
-        	add_options_page('Sphinx Search', 'Sphinx Search', 9, basename(__FILE__), array(&$this, 'print_admin_page'));
+            add_options_page('Sphinx Search', 'Sphinx Search', 9, basename(__FILE__), array(&$this, 'print_admin_page'));
         }
+    }
+
+    function admin_init()
+    {
+        wp_deregister_script( 'jquery' );
+        wp_register_script( 'jquery', WP_PLUGIN_URL .'/'.
+                dirname(plugin_basename(__FILE__)).
+                '/templates/jquery-1.4.4.min.js');
+        wp_enqueue_script( 'jquery' );
+
+        //ajax wizard actions
+        if (!empty($_POST['action'])){
+            $wizard = new WizardController($this->config);
+            add_action('wp_ajax_'.$_POST['action'],
+            array(&$wizard, $_POST['action'].'_action'));
+         }
+    }
+
+    function load_widgets()
+    {
+        global $wp_version;
+        //widgets supported only at version 2.8 or higher
+        if (version_compare($wp_version, '2.8', '>=')) {
+            register_widget('LatestSearchesWidget');
+            register_widget('TopSearchesWidget');
+            register_widget('SearchSidebarWidget');
+        }
+    }
+
+    /**
+     * @access private
+     * @return boolean
+     */
+    function _sphinxRunning()
+    {
+        if (!is_search() || 'false' == $this->config->get_option('sphinx_running')){
+            return false;
+        }
+        return true;
     }
 }
 
-register_activation_hook(__FILE__,'ss_install');
+register_activation_hook(__FILE__,'sphinx_plugin_activation');
+
 /**
 * Install table structure
 *
 */
-function ss_install () 
+function sphinx_plugin_activation()
 {
-	global $wpdb;
-
-	$table_name = $wpdb->prefix . "sph_counter";
-	if($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
-		$sql = "CREATE TABLE `".$table_name."`
-				(counter_id INTEGER PRIMARY KEY NOT NULL,
-    			max_doc_id INTEGER NOT NULL
-				);";
-				
-   		 require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-		 dbDelta($sql);
-   	}
-   	$table_name = $wpdb->prefix . "sph_stats";
-   	if($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
-		$sql = "CREATE TABLE `".$table_name."`(
-				`id` int(11) unsigned NOT NULL auto_increment,
-				`keywords` varchar(255) NOT NULL default '',
-				`date_added` datetime NOT NULL default '0000-00-00 00:00:00',
-				`keywords_full` varchar(255) NOT NULL default '',
-				PRIMARY KEY  (`id`),
-				KEY `keywords` (`keywords`),
-				FULLTEXT `ft_keywords` (`keywords`),
-				) ENGINE=MyISAM;";
-				
-   		 require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-		 dbDelta($sql);
-   	}
+    //create neccessary tables
+    $config = new SphinxSearch_Config();
+    $sphinxInstall = new SphinxSearch_Install($config);
+    $sphinxInstall->setup_sphinx_counter_tables();
 }
 
