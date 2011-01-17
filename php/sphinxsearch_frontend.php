@@ -1,6 +1,10 @@
 <?php
 /*
-	Copyright 2008  &copy; Percona Ltd  (email : office@percona.com)
+    WordPress Sphinx Search Plugin by Ivinco (opensource@ivinco.com), 2011.
+    If you need commercial support, or if you’d like this plugin customized for your needs, we can help.
+
+    Visit plugin website for the latest news:
+    http://www.ivinco.com/software/wordpress-sphinx-search-plugin  
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -93,7 +97,7 @@ class SphinxSearch_FrontEnd
 		    $_GET['s'] = stripslashes($_GET['s']); 
 		}
 		
-		$this->search_string = $_GET['s']; 
+		$this->search_string = !empty($_GET['s']) ? $_GET['s'] : '';
 				
 		if (!isset($_GET['search_comments']) && !isset($_GET['search_posts']) && !isset($_GET['search_pages'])){
 			$this->params['search_comments'] = $this->config->admin_options['search_comments']=='false'?'':'true';
@@ -121,7 +125,11 @@ class SphinxSearch_FrontEnd
 	function query()
 	{ 
 		global $wp_query;
-		
+
+                //reset filters
+                $this->config->sphinx->ResetFilters();
+                $this->config->sphinx->ResetGroupBy();
+
 		////////////
 		// set filters
 		////////////		
@@ -370,6 +378,7 @@ class SphinxSearch_FrontEnd
 				$cID = $post['comment_id'];
 				
 				$posts_data_assoc_arry[$pID]['post_content'] = $comments_content_excerpt[$cID];
+                                $posts_data_assoc_arry[$pID]['post_excerpt'] = $comments_content_excerpt[$cID];
 				
 				$posts_data_assoc_arry[$pID]['post_title'] = strip_tags($posts_titles_excerpt[$pID]);
 				$posts_data_assoc_arry[$pID]['sphinx_post_title'] = $this->config->admin_options['before_comment'].$posts_titles_excerpt[$pID];
@@ -382,6 +391,7 @@ class SphinxSearch_FrontEnd
 				$posts[] = $posts_data_assoc_arry[$pID];		
 			}else {
 				$posts_data_assoc_arry[$pID]['post_content'] = $posts_content_excerpt[$pID];
+                                $posts_data_assoc_arry[$pID]['post_excerpt'] = $posts_content_excerpt[$pID];
 				if ( 'page' == $posts_data_assoc_arry[$pID]['post_type']){
 					$posts_data_assoc_arry[$pID]['post_title'] = strip_tags($posts_titles_excerpt[$pID]);
 					$posts_data_assoc_arry[$pID]['sphinx_post_title'] = $this->config->admin_options['before_page'].$posts_titles_excerpt[$pID];
@@ -389,7 +399,6 @@ class SphinxSearch_FrontEnd
 					$posts_data_assoc_arry[$pID]['post_title'] = strip_tags($posts_titles_excerpt[$pID]);
 					$posts_data_assoc_arry[$pID]['sphinx_post_title'] = $this->config->admin_options['before_post'].$posts_titles_excerpt[$pID];
 				}
-			
 				$posts[] = $posts_data_assoc_arry[$pID];			
 			}
 		}
@@ -417,9 +426,24 @@ class SphinxSearch_FrontEnd
 	 * @return string
 	 */
 	function wp_title($title = '')
-	{		
-		return htmlspecialchars($_GET['s']) . ' ' .  $title;
-	}	
+	{            
+            return htmlspecialchars($_GET['s']) . ' ' .  $title;
+	}
+
+        /**
+	 * Return modified post title
+	 *
+	 * @param string $title
+	 * @return string
+	 */
+        function the_title($title = '')
+	{
+            global $post;
+
+            if (!is_search() || !in_the_loop()) return $title;       
+            
+            return $post->sphinx_post_title;
+	}
 	
 	
 	/**
@@ -428,12 +452,8 @@ class SphinxSearch_FrontEnd
 	 * @return unknown
 	 */
 	function sphinx_the_title()
-	{
-		if (!is_search()) return the_title();		
-		
-		global $post;
-		$title = $post->sphinx_post_title;
-		return $title;
+	{		
+            return the_title();
 	}
 	
 	/**
@@ -466,7 +486,7 @@ class SphinxSearch_FrontEnd
 	function the_author($display_name)
 	{
 		global $post;
-		if (!$post->comment_id){	
+		if (empty($post->comment_id)){
 			return $display_name;
 		}
 		return $post->comment_author;
@@ -482,7 +502,7 @@ class SphinxSearch_FrontEnd
 	{
 		global $post;
 		
-		if ($post->comment_id){
+		if (!empty($post->comment_id)){
 			return $permalink.'#comment-'.$post->comment_id;
 		} else {
 			return $permalink;
@@ -500,7 +520,7 @@ class SphinxSearch_FrontEnd
 	{	
 		global $post;
 		
-		if (!$post->comment_id){
+		if (empty($post->comment_id)){
 			return $permalink;
 		}
 		
@@ -537,7 +557,10 @@ class SphinxSearch_FrontEnd
 			}
 	
 			$authordata = get_userdata($post->post_author);
-			$author = $authordata->user_nicename;
+                        $author = '';
+                        if (is_object($authordata)){
+                            $author = $authordata->user_nicename;
+                        }
 			$date = explode(" ",date('Y m d H i s', $unixtime));
 			$rewritereplace =
 			array(
@@ -595,11 +618,11 @@ class SphinxSearch_FrontEnd
 					);
 					
 		$excerpts = $this->config->sphinx->BuildExcerpts(
-														$post_content,
-														'main_'.$this->config->admin_options['sphinx_index'], 
-														$this->search_string,
-														$opts
-														); 
+                    $post_content,
+                    $this->config->admin_options['sphinx_index'].'main',
+                    $this->search_string,
+                    $opts
+		); 
 		//to do something usefull with error
 		if ( $excerpts === false ){
 			$error = $this->config->sphinx->getLastError();
@@ -609,12 +632,12 @@ class SphinxSearch_FrontEnd
 			return false;
 		}
 
-		$i = 0;
-        foreach ($post_content as $k=>$v){
-        	$post_content[$k] = $excerpts[$i++];
-        }
+            $i = 0;
+            foreach ($post_content as $k=>$v){
+                    $post_content[$k] = $excerpts[$i++];
+            }
         
-        return $post_content;				
+            return $post_content;
 	}
 	
 	/**
@@ -688,7 +711,7 @@ class SphinxSearch_FrontEnd
 		global $wpdb, $table_prefix;
 		$sql_related = '';
 		if (is_search()){
-			$keywords = $this->clear_keywords($_GET['s']);		
+			$keywords = $this->clear_keywords($_GET['s']);
 			if (!empty($keywords)){
 				$sql_related = ' AND ';
 				$sql_related .= " (MATCH(keywords) AGAINST ('".$wpdb->escape($keywords)."' IN BOOLEAN MODE)) ";
@@ -711,7 +734,7 @@ class SphinxSearch_FrontEnd
 						cnt DESC
 					LIMIT 
 						".($limit+30)."" ; 
-			$results = $wpdb->get_results($sql);
+			$results = $wpdb->get_results($sql);                        
 		}
 		if (empty($results)){
 			$sql = "SELECT 
@@ -733,7 +756,7 @@ class SphinxSearch_FrontEnd
 			$this->top_ten_is_related = true;
 		}
 
-		$results = $this->make_results_clear($results, $limit);
+		$results = $this->make_results_clear($results, $limit, $width, $break);
 		
 		return $results;
 	}
@@ -764,12 +787,12 @@ class SphinxSearch_FrontEnd
 				" ; 
 		$results = $wpdb->get_results($sql);
 		
-		$results = $this->make_results_clear($results, $limit);
+		$results = $this->make_results_clear($results, $limit, $width, $break);
 		
 		return $results;
 	}
 	
-	function make_results_clear($results, $limit){
+	function make_results_clear($results, $limit, $width = 0, $break = '...'){
 	    $counter = 0;
 		$clear_results = array();
 		foreach ($results as $res){
