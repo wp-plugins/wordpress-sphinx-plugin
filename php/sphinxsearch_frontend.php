@@ -758,11 +758,6 @@ class SphinxSearch_FrontEnd
             return false;
         }
 
-        $sql_exclude_keyword = '';
-        if (is_search()){
-            $sql_exclude_keyword =  " and keywords_full != '".trim($wpdb->escape($keywords));
-        }
-
 	$results = array();
         $sql = "SELECT
                     keywords_full,
@@ -771,15 +766,16 @@ class SphinxSearch_FrontEnd
                 FROM
                     {$table_prefix}sph_stats
 		WHERE
-                    (date_added >= DATE_SUB(NOW(), INTERVAL 2 Month)) AND
-                    (MATCH(keywords) AGAINST ('".$wpdb->escape($keywords)."' IN BOOLEAN MODE))
-                    $sql_exclude_keyword
-		GROUP BY
-                    keywords DESC
-		ORDER BY
-                    cnt DESC
+                    (date_added >= DATE_SUB(NOW(), INTERVAL 2 Month))
+                    AND (MATCH(keywords) AGAINST ('".$wpdb->escape($keywords)."' IN BOOLEAN MODE))
+                    and keywords_full != '".trim($wpdb->escape($keywords))."'
+                GROUP BY
+                    keywords_full
+                ORDER BY
+                    cnt desc
 		LIMIT
-		".($limit+30)."" ;
+		 $limit" ;
+                    
 	$results = $wpdb->get_results($sql);
 
 	$results = $this->make_results_clear($results, $limit, $width, $break);
