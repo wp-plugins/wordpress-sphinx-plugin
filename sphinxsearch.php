@@ -2,8 +2,8 @@
 /*
 Plugin Name: WordPress Sphinx Search Plugin
 Plugin URI: http://www.ivinco.com/software/wordpress-sphinx-search-plugin/
-Description: Power of Sphinx Search Engine for Your Blog!
-Version: 2.0
+Description: Power of Sphinx Search Engine for Your Blog! 
+Version: 2.1
 Author: Ivinco
 Author URI: http://www.ivinco.com/
 License: A GPL2
@@ -355,6 +355,7 @@ class SphinxSearch{
 	 */
     function print_admin_page()
     {
+        
     	$this->backend->print_admin_page();
     }
     
@@ -371,12 +372,13 @@ class SphinxSearch{
 
     function admin_init()
     {
+        /*
         wp_deregister_script( 'jquery' );
         wp_register_script( 'jquery', WP_PLUGIN_URL .'/'.
                 dirname(plugin_basename(__FILE__)).
                 '/templates/jquery-1.4.4.min.js');
         wp_enqueue_script( 'jquery' );
-
+*/
         //ajax wizard actions
         if (!empty($_POST['action'])){
             $wizard = new WizardController($this->config);

@@ -1,10 +1,11 @@
 === WordPress Sphinx Search Plugin ===
-Contributors: Ivinco
+Contributors: Ivinco, Percona
 Donate link: http://www.ivinco.com/
 Tags: search, sphinx
-!Requires at least: 2.0.2
-!Tested up to: 3.0.3
-!Stable tag: r_2-0
+Requires at least: 2.0.2
+Tested up to: 3.1
+Stable tag: 2.2
+License: GPLv2
 
 WordPress Sphinx Search Plugin allows to use Sphinx Search Server power to enable ultra-fast and feature-rich search on WordPress-based websites.
 
@@ -55,7 +56,7 @@ E-mail:
 opensource@ivinco.com
 
 Website:
-[Ivinco](http://www.ivinco.com/ "Ivinco")
+[Ivinco](http://www.ivinco.com/software/wordpress-sphinx-search-plugin/ "Ivinco WordPress Sphinx Search plugin")
 
 == Installation ==
 
@@ -183,6 +184,10 @@ the correct value.
 This release comes with the revamped UI for the plugin's WordPress wp-admin panel, including new Configuration Wizard to help you install the Sphinx Search Server. Besides we've implemented sidebar widgets for displaying top/related and latest search terms and the extended search form, added search term highlighting for search results, and implemented numerous fixes to make this plugin work better and easier to setup.
 
 == Changelog ==
+
+= 2.1 =
+ * Added more settings to Top/Related widget.
+ * A few bug fixes and minor improvements
 
 = 2.0 =
 *   Added configuration wizard: you can automatically install or reinstall Sphinx via WordPress wp-admin panel
