@@ -63,6 +63,7 @@ class SphinxSearch_FrontEnd
 	 * IS searchd running
 	 */
 	var $is_searchd_up = true;
+        
 	var $top_ten_is_related = false;
 	
 	/**
@@ -93,7 +94,7 @@ class SphinxSearch_FrontEnd
 		//initialize config
 		$this->config = $config;
 
-		if (get_magic_quotes_gpc()) {
+		if (is_search() && get_magic_quotes_gpc()) {
 		    $_GET['s'] = stripslashes($_GET['s']); 
 		}
 		
@@ -126,42 +127,42 @@ class SphinxSearch_FrontEnd
 	{ 
 		global $wp_query;
 
-                //reset filters
-                $this->config->sphinx->ResetFilters();
-                $this->config->sphinx->ResetGroupBy();
+                $sphinx = $this->config->init_sphinx();
 
 		////////////
 		// set filters
 		////////////		
-		
 
 		if ( empty($this->params['search_comments']) ){
-			$this->config->sphinx->SetFilter('isComment', array(0)); 
+			$sphinx->SetFilter('isComment', array(0)); 
 		}
 				
 		if ( empty($this->params['search_pages']) ){
-			$this->config->sphinx->SetFilter('isPage', array(0));
+			$sphinx->SetFilter('isPage', array(0));
 		}
 			
 		if ( empty($this->params['search_posts']) ){
-			$this->config->sphinx->SetFilter('isPost', array(0));
+			$sphinx->SetFilter('isPost', array(0));
 		}
 		
-		
+
 		if ( $this->params['search_sortby'] == 'date' ){ {
-			$this->config->sphinx->SetSortMode(SPH_SORT_ATTR_DESC, 'date_added');}
+                    $sphinx->SetSortMode(SPH_SORT_ATTR_DESC, 'date_added');}
+		} else if ( $this->params['search_sortby'] == 'relevance' ){
+                    $sphinx->SetSortMode(SPH_SORT_RELEVANCE);
 		} else {
-			$this->config->sphinx->SetSortMode(SPH_SORT_RELEVANCE);
+                    $sphinx->SetSortMode(SPH_SORT_TIME_SEGMENTS, 'date_added');
 		}
-		
+
 		////////////
 		// set limits
 		////////////
 
-		$searchpage = ( !empty($wp_query->query_vars['paged']) ) ? $wp_query->query_vars['paged'] : 1;
+		$searchpage = ( !empty($wp_query->query_vars['paged']) )
+                        ? $wp_query->query_vars['paged'] : 1;
 		$posts_per_page = intval(get_settings('posts_per_page'));
 		$offset = intval( ( $searchpage - 1 ) * $posts_per_page);
-		$this->config->sphinx->SetLimits($offset, $posts_per_page);		
+		$sphinx->SetLimits($offset, $posts_per_page);		
 		
 		////////////
 		// do query
@@ -172,16 +173,18 @@ class SphinxSearch_FrontEnd
 		//replace key- buffer to key buffer
 		//replace key - buffer to key buffer
 		$this->search_string = $this->unify_keywords($this->search_string);
-		
-		$res = $this->config->sphinx->Query ( $this->search_string, $this->config->admin_options['sphinx_index'] );
+
+		$res = $sphinx->Query ( $this->search_string, $this->config->admin_options['sphinx_index'] );
+
 		if (empty($res["matches"]) && $this->is_simple_query($this->search_string)){
-			$this->config->sphinx->SetMatchMode ( SPH_MATCH_ANY );
-			$res = $this->config->sphinx->Query ( $this->search_string, $this->config->admin_options['sphinx_index'] );
+			$sphinx->SetMatchMode ( SPH_MATCH_ANY );
+			$res = $sphinx->Query ( $this->search_string, $this->config->admin_options['sphinx_index'] );
 			$this->used_match_any = true;
 		}
+                
 		//to do something usefull with error
 		if ( $res === false ){
-			$error = $this->config->sphinx->getLastError();
+			$error = $sphinx->getLastError();
 			if (preg_match('/connection/', $error) and preg_match('/failed/', $error)) 
 				$this->is_searchd_up = false;
 			return array();
@@ -195,16 +198,17 @@ class SphinxSearch_FrontEnd
 			$this->used_match_any === true){
 			$partial_keyword_match_or_adult_keyword = true;
 		}
+
 		if (strpos($_SERVER['HTTP_REFERER'], $_SERVER['HTTP_HOST']) !== false){
 			// make new query without filters
 			if (!is_array($res["matches"])){
 				$this->used_match_any = false;
-				$this->config->sphinx->_filters = array();
-				$this->config->sphinx->SetLimits(0, 1);
-				$res_tmp = $this->config->sphinx->Query ( $this->search_string, $this->config->admin_options['sphinx_index'] );
+				$sphinx->_filters = array();
+				$sphinx->SetLimits(0, 1);
+				$res_tmp = $sphinx->Query ( $this->search_string, $this->config->admin_options['sphinx_index'] );
 				//to do something usefull with error
 				if ( $res_tmp === false ){
-					$error = $this->config->sphinx->getLastError();
+					$error = $sphinx->getLastError();
 					if (preg_match('/connection/', $error) and preg_match('/failed/', $error)) {
 						$this->is_searchd_up = false;
 					}
@@ -217,14 +221,15 @@ class SphinxSearch_FrontEnd
 				$this->insert_sphinx_stats($this->search_string);
 			}
 		}
+                
 		//if no posts found return empty array
 		if (!is_array($res["matches"])) return array();
 		
 		//group results
-		$this->config->sphinx->ResetFilters();
-		$this->config->sphinx->SetGroupBy('post_type', SPH_GROUPBY_ATTR, "@count desc");
-		$this->config->sphinx->SetLimits(0, 1000);	
-		$res_tmp = $this->config->sphinx->Query ( $this->search_string, $this->config->admin_options['sphinx_index'] );
+		$sphinx->ResetFilters();
+		$sphinx->SetGroupBy('post_type', SPH_GROUPBY_ATTR, "@count desc");
+		$sphinx->SetLimits(0, 1000);	
+		$res_tmp = $sphinx->Query ( $this->search_string, $this->config->admin_options['sphinx_index'] );
 		if ($res_tmp['matches']){
 			foreach ($res_tmp['matches'] as $m){
 				switch ($m['attrs']['post_type']){
@@ -277,6 +282,7 @@ class SphinxSearch_FrontEnd
 			else 
 				$content['posts'][] = array( 'comment_id' => ($key)/2, 'weight' => $val['weight'], 'post_id' => $val['attrs']['post_id'], 'is_comment' => 1);
 		}
+
 		$this->posts_info = $content['posts'];
 		$this->post_count = $this->search_results['total_found'];
 		
@@ -596,6 +602,7 @@ class SphinxSearch_FrontEnd
 	 */
 	function get_excerpt($post_content, $isTitle = false)
 	{
+            $sphinx = $this->config->init_sphinx();
 		$is_string = false;
 		if(empty($post_content)) return array(); 
 			
@@ -617,7 +624,7 @@ class SphinxSearch_FrontEnd
 					'before_match' => $this->config->admin_options['excerpt_before_match'.$isTitle]
 					);
 					
-		$excerpts = $this->config->sphinx->BuildExcerpts(
+		$excerpts = $sphinx->BuildExcerpts(
                     $post_content,
                     $this->config->admin_options['sphinx_index'].'main',
                     $this->search_string,
@@ -625,7 +632,7 @@ class SphinxSearch_FrontEnd
 		); 
 		//to do something usefull with error
 		if ( $excerpts === false ){
-			$error = $this->config->sphinx->getLastError();
+			$error = $sphinx->getLastError();
 			if (preg_match('/connection/', $error) and preg_match('/failed/', $error)) {
 				$this->is_searchd_up = false;
 			}
@@ -688,14 +695,21 @@ class SphinxSearch_FrontEnd
 		$keywords = $this->clear_from_tags($keywords_full);
 		$keywords = trim($keywords);
 		$keywords_full = trim($keywords_full);
-		
+
+                $sql = "select status from {$table_prefix}sph_stats
+                where keywords_full = '".$wpdb->escape($keywords_full)."'
+                    limit 1";
+                $status = $wpdb->get_var($sql);
+                $status = intval($status);
+
 		$sql = "INSERT INTO 
                             {$table_prefix}sph_stats
-                            (keywords, keywords_full, date_added)
+                            (keywords, keywords_full, date_added, status)
                         VALUES
                             ('".mysql_real_escape_string($keywords)."',
                              '".mysql_real_escape_string($keywords_full)."',
-                            NOW()
+                            NOW(),
+                            $status
                         )";
 
 		$wpdb->query($sql);
@@ -726,93 +740,145 @@ class SphinxSearch_FrontEnd
 	return $results;
     }
 
-    function sphinx_stats_top($limit = 10, $width = 0, $break = '...')
+
+    function sphinx_stats_top($limit = 10, $width = 0, $break = '...', $approved=false, $period_limit = 30)
     {
         global $wpdb, $table_prefix;
-	$sql = "SELECT
+
+        $sphinx = $this->config->init_sphinx();
+
+        $sphinx->SetLimits(0, $limit + 30);
+        if ($approved){
+            $status = array(1);
+        } else {
+            $status = array(1,0);
+        }
+        $sphinx->SetFilter('status', $status);
+
+        if ($period_limit) {
+            $minTime = strtotime("-{$period_limit} days");
+            $sphinx->SetFilterRange('date_added', $minTime, time());
+        }
+        
+        $sphinx->SetGroupBy ( "keywords_crc", SPH_GROUPBY_ATTR, "@count desc" );
+
+
+        $res = $sphinx->Query('',
+                $this->config->get_option('sphinx_index').'stats');
+
+        if (empty($res['matches']) || !is_array($res['matches'])){
+            return array();
+        }
+
+        $ids = array_keys($res['matches']);
+
+        $sql = "SELECT
+                    distinct keywords_full,
                     keywords,
-                    keywords_full,
-                    count(1) as cnt
+                    date_added
 		FROM
                     {$table_prefix}sph_stats
-		WHERE
-                    date_added >= DATE_SUB(NOW(), INTERVAL 1 Month)
-		GROUP BY
-                    keywords DESC
-		ORDER BY
-                    cnt DESC
+                WHERE
+                    id in (".  implode(",", $ids).")
+                ORDER BY FIELD(id, ".  implode(",", $ids).")
 		LIMIT
-		".($limit+30)."" ;
+                    ".($limit+30)."" ;
 	$results = $wpdb->get_results($sql);
+
 	$results = $this->make_results_clear($results, $limit, $width, $break);
 
 	return $results;
     }
 
-    function sphinx_stats_related($keywords, $limit = 10, $width = 0, $break = '...')
+    function sphinx_stats_related($keywords, $limit = 10, $width = 0, $break = '...', $approved = false)
     {
         global $wpdb, $table_prefix;
 
+        $sphinx = $this->config->init_sphinx();
+        $sphinx->SetMatchMode ( SPH_MATCH_ANY );
+
         $keywords = $this->clear_keywords($keywords);
-	if (empty($keywords)){
+        $keywords = $this->unify_keywords($keywords);
+
+        if ($approved){
+            $status = array(1);
+        } else {
+            $status = array(1,0);
+        }
+        $sphinx->SetFilter('status', $status);
+
+        $sphinx->SetLimits(0, $limit + 30);
+        $sphinx->SetGroupBy ( "keywords_crc", SPH_GROUPBY_ATTR, "@weight desc" );
+
+        $res = $sphinx->Query($keywords,
+                $this->config->get_option('sphinx_index').'stats');
+        if (empty($res['matches']) || !is_array($res['matches'])){
             return false;
         }
+        $ids = array_keys($res['matches']);
 
-	$results = array();
         $sql = "SELECT
-                    keywords_full,
                     keywords,
-                    count(1) as cnt
+                    keywords_full
                 FROM
                     {$table_prefix}sph_stats
 		WHERE
-                    (date_added >= DATE_SUB(NOW(), INTERVAL 2 Month))
-                    AND (MATCH(keywords) AGAINST ('".$wpdb->escape($keywords)."' IN BOOLEAN MODE))
+                    id in (".  implode(",", $ids).")   
                     and keywords_full != '".trim($wpdb->escape($keywords))."'
-                GROUP BY
-                    keywords_full
-                ORDER BY
-                    cnt desc
+                ORDER BY FIELD(id, ".  implode(",", $ids).")
+		LIMIT 
+		 ".($limit+30)."" ;
+
+	$results = $wpdb->get_results($sql);
+
+        $results = $this->make_results_clear($results, $limit, $width, $break);
+
+	return $results;
+    }
+
+    function sphinx_stats_latest($limit = 10, $width = 0, $break = '...', $approved=false)
+    {
+        global $wpdb, $table_prefix;
+        
+        $sphinx = $this->config->init_sphinx();
+
+        $sphinx->SetLimits(0, $limit + 30);
+        if ($approved){
+            $status = array(1);
+        } else {
+            $status = array(1,0);
+        }
+        $sphinx->SetFilter('status', $status);
+        $sphinx->SetGroupBy ( "keywords_crc", SPH_GROUPBY_ATTR, "date_added desc" );
+        $sphinx->SetSortMode(SPH_SORT_ATTR_DESC, 'date_added');
+
+
+        $res = $sphinx->Query('',
+                $this->config->get_option('sphinx_index').'stats');
+
+        if (empty($res['matches']) || !is_array($res['matches'])){
+            return array();
+        }
+
+        $ids = array_keys($res['matches']);
+
+        $sql = "SELECT
+                    distinct keywords_full,
+                    keywords,
+                    date_added
+		FROM
+                    {$table_prefix}sph_stats
+                WHERE
+                    id in (".  implode(",", $ids).")
+                ORDER BY FIELD(id, ".  implode(",", $ids).")
 		LIMIT
-		 $limit" ;
-                    
+                    ".($limit+30)."" ;
 	$results = $wpdb->get_results($sql);
 
 	$results = $this->make_results_clear($results, $limit, $width, $break);
 
 	return $results;
     }
-	
-	/**
-	 * Return N-latest search keywords
-	 *
-	 * @param integer $limit
-	 * @param integer $width
-	 * @param string $break
-	 * @return array
-	 */
-	function sphinx_stats_latest($limit = 10, $width = 0, $break = '...')
-	{
-		global $wpdb, $table_prefix;
-		$sql = "SELECT 
-					keywords,
-					keywords_full,
-					max(id) m
-				FROM 
-					{$table_prefix}sph_stats 
- 				GROUP BY 
- 					keywords_full DESC
- 				ORDER BY 
- 					m DESC					  					
-				LIMIT
-					".($limit+30)."	
-				" ;
-		$results = $wpdb->get_results($sql);
-
-		$results = $this->make_results_clear($results, $limit, $width, $break);
-		
-		return $results;
-	}
 	
     function make_results_clear($results, $limit, $width = 0, $break = '...')
     {
@@ -886,7 +952,7 @@ class SphinxSearch_FrontEnd
 											'on top of' , 'with regard to' , 'in lieu of');
 		$coordinatingConjuctions = array('for', 'and', 'nor', 'but', 'or', 'yet', 'so', 'not');
 		
-		$articles = array('a', 'an', 'the');
+		$articles = array('a', 'an', 'the', 'is', 'as');
 		
 		$stopWords = array_merge($prepositions, $twoWordPrepositions);
 		$stopWords = array_merge($stopWords, $threeWordPrepositions);
@@ -1007,13 +1073,15 @@ class SphinxSearch_FrontEnd
    */
   function has_full_matches($keywords)
   {
-    $keywords = $this->unify_keywords($keywords);
-    $this->config->sphinx->ResetFilters();
-    $this->config->sphinx->ResetGroupBy();
-    $this->config->sphinx->SetLimits(0, 1);
-    $this->config->sphinx->SetMatchMode(SPH_MATCH_ALL);
-    $res = $this->config->sphinx->Query($keywords, $this->config->admin_options['sphinx_index']);
-    return !empty($res['matches']);
+        $sphinx = $this->config->init_sphinx();
+      
+        $keywords = $this->unify_keywords($keywords);
+        $sphinx->ResetFilters();
+        $sphinx->ResetGroupBy();
+        $sphinx->SetLimits(0, 1);
+        $sphinx->SetMatchMode(SPH_MATCH_ALL);
+        $res = $sphinx->Query($keywords, $this->config->admin_options['sphinx_index']);
+        return !empty($res['matches']);
   }
 
   function unify_keywords($keywords)

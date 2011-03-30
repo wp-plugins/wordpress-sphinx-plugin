@@ -97,6 +97,16 @@ class SphinxService
              if ( file_exists("/proc/$pid") ){
                  return true;
              }             
+         } else {
+             $pid_filename = $this->get_searchd_pid_filename($this->_config->get_option('sphinx_conf'));
+             if ( !file_exists($pid_filename) ){
+                 return false;
+             }
+             $pid = file_get_contents($pid_filename);
+             $pid = trim($pid);
+             if ( file_exists("/proc/$pid") ){
+                 return true;
+             }
          }
          return false;
      }
@@ -108,6 +118,9 @@ class SphinxService
       */
      function get_searchd_pid_filename($sphinx_conf)
      {
+         if (!file_exists($sphinx_conf) || !is_readable($sphinx_conf)){
+             return false;
+         }
      	$content = file_get_contents($sphinx_conf);
      	if (preg_match("#\bpid_file\s+=\s+(.*)\b#", $content, $m))
      	{
@@ -124,6 +137,9 @@ class SphinxService
       */
      function get_main_index_path($sphinx_conf)
      {
+         if (!file_exists($sphinx_conf)  || !is_readable($sphinx_conf)){
+             return '';
+         }
      	$content = file_get_contents($sphinx_conf);
         $sphinx_index_path = '';
      	if (preg_match("#\bpath\s+=\s+(.*)\b#", $content, $m))
@@ -166,21 +182,27 @@ class SphinxService
             !file_exists($this->_config->get_option('sphinx_conf')) ||
             !file_exists($this->_config->get_option('sphinx_indexer'))){
             return  array('err' =>'Indexer: configuration files not found.');
-	}elseif ('' == $this->_config->get_option('sphinx_index')){
+	}elseif ('' == $this->_config->get_option('sphinx_index')){            
             return  array('err' =>'Indexer: Sphinx index prefix is not specified.');
 	}else {
+            $rotate = "";
+            if ($this->is_sphinx_running()){
+                $rotate = " --rotate ";
+            }
             $command = $this->_config->get_option('sphinx_indexer').
-                    "  --rotate --config ".$this->_config->get_option('sphinx_conf');
+                    "  {$rotate} --config ".$this->_config->get_option('sphinx_conf');
 
             if(empty($index_name)){
                 //reindex all indexes with restart searchd
-                $command .= " ".$this->_config->get_option('sphinx_index')."delta ".
-                    $this->_config->get_option('sphinx_index')."main ";
+                $command .= " ".
+                    $this->_config->get_option('sphinx_index')."delta ".
+                    $this->_config->get_option('sphinx_index')."main ".
+                    $this->_config->get_option('sphinx_index')."stats ";
             } elseif (!empty ($index_name)) {
                 //reindex only specified index with restart searchd
                 $command .= " ".$this->_config->get_option('sphinx_index').$index_name;
             }
-                    
+            
             exec($command, $output, $retval);
             //echo implode("<br/>", $output);
             if ($retval !=0 || preg_match("#ERROR:#", implode(" ", $output))){
@@ -188,8 +210,6 @@ class SphinxService
                     '<br/>Command: ' . $command);
             }
 	}
-	$this->need_reindex(false);
-	$this->_config->update_admin_options();
 	return true;
      }
 

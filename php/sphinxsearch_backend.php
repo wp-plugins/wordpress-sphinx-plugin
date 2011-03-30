@@ -26,7 +26,12 @@ class SphinxSearch_Backend {
 	 * Config object
 	 */
 	var $config = '';
-	
+
+        /**
+         * View object
+         */
+        var $view = null;
+
 	/**
 	 * SphinxSearch_Backend Constructor
 	 *
@@ -36,6 +41,15 @@ class SphinxSearch_Backend {
 	function SphinxSearch_Backend($config)
 	{
 		$this->config = $config;
+
+                $this->view = $config->get_view();
+
+                if (!empty($_GET['menu']) && !empty ($_REQUEST['action'])){
+                    if ('terms_editor' == $_GET['menu'] && $_REQUEST['action'] == 'export'){
+                        $terms_editor = new TermsEditorController($this->config);
+                        $terms_editor->_export_keywords();
+                    }
+                }
 	}
 	
       /**
@@ -48,16 +62,42 @@ class SphinxSearch_Backend {
                 wp_die( __('You do not have sufficient permissions to access this page.') );
             }            
             $options = $this->config->get_admin_options();
+
             $wizard = new WizardController($this->config);
             if (!empty($_POST['start_wizard']) ||
                     (empty($options['sphinx_conf']) &&
                         'false' == $options['wizard_done'])){
-                return $wizard->start_action();
-            }            
+                $this->view->menu = 'wizard';
+                $wizard->start_action();
+            }
+
+            
+
+            if (!empty($_GET['menu'])){
+                switch($_GET['menu']){
+                    case 'terms_editor':
+                        $terms_editor = new TermsEditorController($this->config);
+                        $terms_editor->index_action();
+                        $this->view->menu = 'terms_editor';
+                        //return;
+                        break;
+                    case 'stats':
+                        $stats = new StatsController($this->config);
+                        $stats->index_action();
+                        $this->view->menu = 'stats';
+                        //return;
+                        break;
+                    case 'search_settings':
+                        $this->view->menu = 'search_settings';
+                        break;
+                }
+
+                
+            }
 
             $sphinxService = new SphinxService($this->config);
             $res = false;
-            $success_message = '';
+            $error_message = $success_message = '';
             if (!empty($_POST['reindex_sphinx'])){
                 $res = $sphinxService->reindex();
                 $success_message = 'Sphinx successfully reindexed.';
@@ -69,25 +109,38 @@ class SphinxSearch_Backend {
 		$success_message = 'Sphinx successfully stopped.';
             }elseif (isset($_POST['update_SphinxSearchSettings'])) {
                 $this->update_options();
-		$success_message = 'Settings updated.';
+                $success_message = 'Settings updated.';
             }
-            
-            $error_message = '';
+                        
             if (is_array($res)){
                 $error_message = $res['err'];
             }
 
-            $sphinxView = new SphinxView();
-            $sphinxView->assign('index_modify_time', $sphinxService->get_index_modify_time());
+            
+            $this->view->assign('index_modify_time', $sphinxService->get_index_modify_time());
 
-            $sphinxView->assign('error_message', $error_message);
-            $sphinxView->assign('success_message', $success_message);            
+            if (!empty($error_message)){
+                $this->view->assign('error_message', $error_message);
+            }
+            if (!empty($success_message)){
+                $this->view->assign('success_message', $success_message);
+            }
 		
             $devOptions = $this->config->get_admin_options(); //update options
-            $sphinxView->assign('devOptions', $devOptions);
+            $this->view->assign('devOptions', $devOptions);
             //load admin panel template
-            $sphinxView->assign('header', 'Sphinx Search for Wordpress');
-            $sphinxView->render('admin/settings_general.phtml');
+            $this->view->assign('header', 'Sphinx Search for Wordpress');
+
+            if ('true' != $devOptions['check_stats_table_column_status']) {
+                global $table_prefix;
+                $this->view->assign('error_message',  "{$table_prefix}sph_stats table required an update.<br>
+                Please run the following command in MySQL client to update the table: <br>
+                alter table {$table_prefix}sph_stats add `status` tinyint(1) NOT NULL DEFAULT '0';
+                <br><br>
+                This update will allow to use Sphinx Search for Top/Related and Latest search terms widgets!");
+            }
+
+            $this->view->render('admin/layout.phtml');
 	}
 
      /**
@@ -107,7 +160,7 @@ class SphinxSearch_Backend {
 		foreach(array('search_comments', 'search_posts', 'search_pages') as $option){
 			if (!empty($_POST[$option])) $devOptions[$option] = 'true';
 			else $devOptions[$option] = 'false';
-		}
+		}                
 
 		/**
 		 * sphinx_conf - path to sphinx conf file
@@ -120,9 +173,9 @@ class SphinxSearch_Backend {
 		 * before_post - keyword before Post title
 		 */
 		foreach(array('sphinx_conf', 'sphinx_indexer', 'sphinx_searchd', 'sphinx_path',
-					  'sphinx_index', 'strip_tags', 'censor_words') as $option){
-							if (isset($_POST[$option])) $devOptions[$option] = trim($_POST[$option]);
-					  }
+					  'strip_tags', 'censor_words') as $option){
+                    if (isset($_POST[$option])) $devOptions[$option] = trim($_POST[$option]);
+		}
 
 		/**
 		 * excerpt_before_match - tag before search keyword in content part
@@ -142,7 +195,7 @@ class SphinxSearch_Backend {
 		 * excerpt_around - limit number of words in excerpt around the search keyword
 		 * sphinx_port - sphinx search connection port
 		 */
-		foreach(array('excerpt_limit', 'excerpt_around', 'sphinx_port') as $option){
+		foreach(array('excerpt_limit', 'excerpt_around') as $option){
 			if (isset($_POST[$option]))  $devOptions[$option] = $_POST[$option];
 		}
 
@@ -151,7 +204,8 @@ class SphinxSearch_Backend {
 		//sphinx_installed - signal of installed sphinx rep or not
 		if (file_exists($devOptions['sphinx_searchd']) &&
 			file_exists($devOptions['sphinx_conf']) &&
-			file_exists($devOptions['sphinx_indexer'])){
+			file_exists($devOptions['sphinx_indexer']) &&
+                        'false' == $devOptions['sphinx_installed']){
 			$devOptions['sphinx_installed'] = 'true';
 			if (dirname($devOptions['sphinx_searchd']) == dirname($devOptions['sphinx_conf'])){
 				$devOptions['sphinx_path'] = dirname($devOptions['sphinx_searchd']);

@@ -49,6 +49,8 @@ class SphinxSearch_Config
 	 * Sphinx object
 	 */
 	var $sphinx;
+
+        var $_view = null;
 	
 	
 	function SphinxSearch_Config()
@@ -58,11 +60,23 @@ class SphinxSearch_Config
 		
 		
 		//initialize sphinx object and set neccessary parameters
-		$this->sphinx = new SphinxClient ();
-		$this->sphinx->SetServer ( $this->admin_options['sphinx_host'], intval($this->admin_options['sphinx_port']) );
-		$this->sphinx->SetWeights ( array ( 1, 1 ) );
-		$this->sphinx->SetMatchMode ( SPH_MATCH_EXTENDED2 );
+                $this->init_sphinx();
+
+                $this->_view = new SphinxView();
 	}
+
+        function init_sphinx()
+        {
+            $this->sphinx = new SphinxClient ();
+            $this->sphinx->SetServer ( $this->admin_options['sphinx_host'], intval($this->admin_options['sphinx_port']) );
+            $this->sphinx->SetMatchMode ( SPH_MATCH_EXTENDED2 );
+            return $this->sphinx;
+        }
+
+        function get_view()
+        {
+            return $this->_view;
+        }
 	
 	/**
     * Load and return array of options 
@@ -109,7 +123,9 @@ class SphinxSearch_Config
    			'before_page' => 'Page:',
    			'before_post' => '',
 
-                        'sphinx_cron_start' => 'false'
+                        'sphinx_cron_start' => 'false',
+
+                        'check_stats_table_column_status' => 'false'
    			
    			);
    		$this->admin_options = get_option($this->adminOptionsName);
@@ -158,6 +174,9 @@ class SphinxSearch_Config
          return false;
      }
      
-     
+     function get_plugin_url()
+     {
+         return 'options-general.php?page=sphinxsearch.php';
+     }
     
 }

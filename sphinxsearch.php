@@ -3,7 +3,7 @@
 Plugin Name: WordPress Sphinx Search Plugin
 Plugin URI: http://www.ivinco.com/software/wordpress-sphinx-search-plugin/
 Description: Power of Sphinx Search Engine for Your Blog! 
-Version: 2.1
+Version: 3.0
 Author: Ivinco
 Author URI: http://www.ivinco.com/
 License: A GPL2
@@ -65,6 +65,8 @@ include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/sphinxsearch_backend.php');
 include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/sphinxsearch_sphinxinstall.php');
 
 include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/wizard-controller.php');
+include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/stats-controller.php');
+include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/terms-editor-controller.php');
 include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/sphinx-service.php');
 include_once(SPHINXSEARCH_PLUGIN_DIR.'/php/sphinx-view.php');
 
@@ -107,12 +109,11 @@ class SphinxSearch{
 	 */
 	function SphinxSearch()
 	{
-
 		$this->config = new SphinxSearch_Config();
                 $this->sphinxService = new SphinxService($this->config);
 		$this->backend = new SphinxSearch_BackEnd($this->config);		
 		$this->frontend = new SphinxSearch_FrontEnd($this->config);
-		
+                
 		//bind neccessary filters
 		
 		//prepare post results
@@ -132,6 +133,8 @@ class SphinxSearch{
                 add_filter('the_content', array(&$this, 'the_content'));
                 add_filter('the_author', array(&$this, 'the_author'));
                 add_filter('the_time', array(&$this, 'the_time'));
+                add_action('wp_print_styles', array(&$this,'add_my_stylesheet'));
+
 
                // add_action('loop_start',  array(&$this, 'add_actions_filters'));
                 add_action('loop_end',  array(&$this, 'remove_actions_filters'));
@@ -168,6 +171,15 @@ class SphinxSearch{
             remove_filter( 'the_time', array(&$this, 'the_time') );
 
         }
+
+        function add_my_stylesheet()
+        {
+            $myStyleUrl = plugins_url('templates/sphinxsearch.css', __FILE__);
+            $myStyleFile = plugins_url('templates/sphinxsearch.css', __FILE__);
+            wp_register_style('sphinxStyleSheets', $myStyleUrl);
+            wp_enqueue_style( 'sphinxStyleSheets');
+        }
+
 	
 	/**
 	 * Replace post time to commen time
@@ -355,7 +367,9 @@ class SphinxSearch{
 	 */
     function print_admin_page()
     {
-        
+        if ('true' != $this->config->get_option('check_stats_table_column_status')){
+            $this->upgrade_table_statistics_in_v3();
+        }
     	$this->backend->print_admin_page();
     }
     
@@ -384,7 +398,7 @@ class SphinxSearch{
             $wizard = new WizardController($this->config);
             add_action('wp_ajax_'.$_POST['action'],
             array(&$wizard, $_POST['action'].'_action'));
-         }
+         }         
     }
 
     function load_widgets()
@@ -409,10 +423,37 @@ class SphinxSearch{
         }
         return true;
     }
+
+    function upgrade_table_statistics_in_v3()
+    {
+        global $wpdb, $table_prefix;
+        //check for column status
+        $result = $wpdb->get_results("SHOW COLUMNS FROM {$table_prefix}sph_stats");
+        if (!$result) {
+            echo 'Could not run query: ' . mysql_error();
+            exit;
+        }
+        foreach($result as $column){
+            if ('status' == $column->Field){
+                $options['check_stats_table_column_status'] = 'true';
+                $this->config->update_admin_options($options);
+            }
+        }
+
+        if ('true' == $options['check_stats_table_column_status']){
+            //set up sphinx for stats in widgest or not
+            $wizard = new WizardController($this->config);
+            $config_file_name = $this->config->get_option('sphinx_conf');
+            $config_file_content = $wizard->_generate_config_file_content();
+            $wizard->_save_config($config_file_name, $config_file_content);
+
+            $sphinxService = new SphinxService($this->config);
+            $ret = $sphinxService->reindex('stats');
+        }
+    }
 }
 
 register_activation_hook(__FILE__,'sphinx_plugin_activation');
-
 /**
 * Install table structure
 *
