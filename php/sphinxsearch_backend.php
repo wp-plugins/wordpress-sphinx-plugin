@@ -151,13 +151,14 @@ class SphinxSearch_Backend {
 	{
 		//get options array
 		$devOptions = $this->config->admin_options;
+                
 
 		/**
 		 * search_comments - search in comments
 		 * search_posts - search in posts
 		 * search_pages - search in pages
 		 */
-		foreach(array('search_comments', 'search_posts', 'search_pages') as $option){
+		foreach(array('search_comments', 'search_posts', 'search_pages', 'seo_url_all') as $option){
 			if (!empty($_POST[$option])) $devOptions[$option] = 'true';
 			else $devOptions[$option] = 'false';
 		}                
@@ -186,7 +187,7 @@ class SphinxSearch_Backend {
 		 */
 		foreach(array('excerpt_before_match', 'excerpt_after_match', 'excerpt_before_match_title',
 					  'excerpt_after_match_title', 'excerpt_chunk_separator', 'before_comment',
-					  'before_page', 'before_post') as $option){
+					  'before_page', 'before_post', 'sphinx_max_matches') as $option){
 							if (isset($_POST[$option]))  $devOptions[$option] = $_POST[$option];
 					  }
 
@@ -215,7 +216,8 @@ class SphinxSearch_Backend {
 				$devOptions['sphinx_path'] = dirname($devOptions['sphinx_searchd']);
 			}
 		}
-
+                
+                
 		$this->config->update_admin_options($devOptions);
 	}
 

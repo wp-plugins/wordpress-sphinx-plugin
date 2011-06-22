@@ -4,7 +4,7 @@ Donate link: http://www.ivinco.com/
 Tags: search, sphinx
 Requires at least: 2.0.2
 Tested up to: 3.1
-Stable tag: 3.0.1
+Stable tag: 3.3
 License: GPLv2
 
 WordPress Sphinx Search Plugin allows to use Sphinx Search Server power to enable ultra-fast and feature-rich search on WordPress-based websites.
@@ -87,16 +87,24 @@ To find out if the current post is comment
     if (ss_isComment()) echo 'It is comment'; else echo '';?>`
 
 Extended search form at the sidebar
-Use “Sphinx Search sidebar” widget or add it as template tag:
+Use "Sphinx Search sidebar" widget or add it as template tag:
 `<?php if (function_exists('ss_search_bar'))
     echo ss_search_bar(true); /*put it in sidebar*/?>`
 
 Related/Top searches at the sidebar
-Use “Sphinx Related/Top Searches” widget or add it as template tag:
+Use "Sphinx Related/Top Searches" widget or add it as template tag:
 `<?php if (function_exists('ss_top_searches')) ss_top_searches(); ?>`
 
+Top searches with pagination
+Use "ss_top_searches_pager($max_per_page=10, $show_all=false)" template tag to enable pagination for top search terms:
+`<?php if (function_exists('ss_top_searches_pager')) ss_top_searches_pager(); ?>`
+Parameters:
+ * $max_per_page - limit how many search terms to display per page, by default 10
+ * $show_all - If set to True, then it will show all of the pages instead of a
+short list of the pages near the current page. By default, the 'show_all' is set to false
+
 Latest searches at the sidebar
-Use “Sphinx Latest Searches” widget or add it as template tag:
+Use "Sphinx Latest Searches" widget or add it as template tag:
 `<?php if (function_exists('ss_latest_searches')) ss_latest_searches(); ?>`
 
 = Upgrade the plugin =
@@ -168,6 +176,16 @@ Q: I’ve got an error “Indexer: configuration files not found.” on clocking
 A: Check that the user which is running your web server (it's usually apache, www-data or smth like this)
 can run indexer/searchd and can read/write into sphinx.conf. Then run Sphinx Configuration wizard from WP Admin panel again.
 
+Q: How to set the maximum number of search results above 100.000?
+
+A: 1)Go to Sphinx Search plugin directory and open rep/sphinx.conf in text editor.
+2)Find max_matches parameter in searchd section at the bottom of the file
+3)Set new value i.e. max_matches = 1000000
+4)Open Sphinx Search control panel in WP Admin
+5)Click on "Run Sphinx configuration Wizard" and skip all steps in the Wizard, it will rebuilds sphinx.conf file at the last step, click Finish.
+6)Restart Sphinx Search (click on "Stop Sphinx daemon" and then "Start Sphinx daemon")
+7)Open tab "Search settings" and set the same max_matches value in the field "Maximum number of search results".
+
 
 
 == Screenshots ==
@@ -182,7 +200,7 @@ can run indexer/searchd and can read/write into sphinx.conf. Then run Sphinx Con
 
 = Semi live update - "main+delta" scheme =
 
-To enable semi-live index updates also known as "main+delta" scheme, 
+To enable semi-live index updates also known as "main+delta" scheme,
 the plugin will create the following table in your MySQL database:
 `
 # in MySQL
@@ -196,7 +214,7 @@ If your WordPress installation's table prefix is not "wp_", substitute
 the correct value.
 
 = Top and last search terms =
-In order to be able to store search statistics the plugin will run 
+In order to be able to store search statistics the plugin will run
 the following SQL query during the activation process:
 `
 # in MySQL
@@ -228,6 +246,15 @@ the correct value.
  We added new search mode "Freshness & Relevance" which works perfect for blogs and news sites.
 
 == Changelog ==
+= 3.3.0 =
+ * Added friendly URLs support
+ * Added ability to enable/disable friendly urls in Top/Related and Latest search terms widgets
+ * Added ability to set maximum number of search results
+ * Added tag for listing top search terms on a page
+ * Fixed several bugs
+
+= 3.0.2 =
+ * Added new template tag: top search terms with pagination
 
 = 3.0.1 =
  * Fixed bug in ss_isComment tag

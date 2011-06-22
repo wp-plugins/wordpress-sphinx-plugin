@@ -48,6 +48,7 @@ class SphinxSearch_FrontEnd
 	 * @var string
 	 */
 	var $search_string = '';
+        var $search_string_original = '';
 	
 	/**
 	 * Search params
@@ -79,6 +80,12 @@ class SphinxSearch_FrontEnd
 	var $posts_count = 0;
 	var $pages_count = 0;
 	var $comments_count = 0;
+
+        /**
+         *
+         * 
+         */
+        var $_top_ten_total = 0;
 	
 	/**
 	 * Delegate config object from SphinxSearch_Config class
@@ -93,12 +100,6 @@ class SphinxSearch_FrontEnd
 		
 		//initialize config
 		$this->config = $config;
-
-		if (is_search() && get_magic_quotes_gpc()) {
-		    $_GET['s'] = stripslashes($_GET['s']); 
-		}
-		
-		$this->search_string = !empty($_GET['s']) ? $_GET['s'] : '';
 				
 		if (!isset($_GET['search_comments']) && !isset($_GET['search_posts']) && !isset($_GET['search_pages'])){
 			$this->params['search_comments'] = $this->config->admin_options['search_comments']=='false'?'':'true';
@@ -123,9 +124,13 @@ class SphinxSearch_FrontEnd
 	 *
 	 * @return array
 	 */
-	function query()
+	function query($search_string)
 	{ 
 		global $wp_query;
+
+                $this->search_string_original = $search_string;
+                
+                $this->search_string = $search_string;
 
                 $sphinx = $this->config->init_sphinx();
 
@@ -162,7 +167,7 @@ class SphinxSearch_FrontEnd
                         ? $wp_query->query_vars['paged'] : 1;
 		$posts_per_page = intval(get_settings('posts_per_page'));
 		$offset = intval( ( $searchpage - 1 ) * $posts_per_page);
-		$sphinx->SetLimits($offset, $posts_per_page);		
+		$sphinx->SetLimits($offset, $posts_per_page, $this->config->admin_options['sphinx_max_matches']);
 		
 		////////////
 		// do query
@@ -172,7 +177,7 @@ class SphinxSearch_FrontEnd
 		//replace key -buffer to key -buffer
 		//replace key- buffer to key buffer
 		//replace key - buffer to key buffer
-		$this->search_string = $this->unify_keywords($this->search_string);
+		$this->search_string = $this->unify_keywords($this->search_string);                
 
 		$res = $sphinx->Query ( $this->search_string, $this->config->admin_options['sphinx_index'] );
 
@@ -378,7 +383,7 @@ class SphinxSearch_FrontEnd
 			$pID = $post['post_id'];
 			if (is_object($posts_data_assoc[$pID])) {				
 				$posts_data_assoc_arry[$pID] = get_object_vars($posts_data_assoc[$pID]);
-			}
+			}                        
 			//it is comment
 			if ($post['is_comment'])  {
 				$cID = $post['comment_id'];
@@ -433,7 +438,7 @@ class SphinxSearch_FrontEnd
 	 */
 	function wp_title($title = '')
 	{            
-            return htmlspecialchars($_GET['s']) . ' ' .  $title;
+            return urldecode($title);
 	}
 
         /**
@@ -688,6 +693,11 @@ class SphinxSearch_FrontEnd
 		}
 		return $str;
 	}
+
+        function get_search_string()
+        {
+            return $this->search_string_original;
+        }
 	
 	/**
 	 * Save statistic by about each search query
@@ -735,7 +745,7 @@ class SphinxSearch_FrontEnd
 	 */
     function sphinx_stats_top_ten($limit = 10, $width = 0, $break = '...')
     {
-	$keywords = $_GET['s'];
+	$keywords = $this->search_string_original;
 
         //try to get related results on search page
         if (is_search() && !empty($keywords)){
@@ -750,13 +760,13 @@ class SphinxSearch_FrontEnd
     }
 
 
-    function sphinx_stats_top($limit = 10, $width = 0, $break = '...', $approved=false, $period_limit = 30)
+    function sphinx_stats_top($limit = 10, $width = 0, $break = '...', $approved=false, $period_limit = 30, $start = 0)
     {
         global $wpdb, $table_prefix;
 
         $sphinx = $this->config->init_sphinx();
 
-        $sphinx->SetLimits(0, $limit + 30);
+        $sphinx->SetLimits($start, $limit + 30, $this->config->admin_options['sphinx_max_matches']);
         if ($approved){
             $status = array(1);
         } else {
@@ -777,7 +787,8 @@ class SphinxSearch_FrontEnd
 
         if (empty($res['matches']) || !is_array($res['matches'])){
             return array();
-        }
+        }        
+        $this->_top_ten_total = $res['total'];
 
         $ids = array_keys($res['matches']);
 
@@ -799,6 +810,11 @@ class SphinxSearch_FrontEnd
 	return $results;
     }
 
+    function get_top_ten_total()
+    {
+        return $this->_top_ten_total;
+    }
+
     function sphinx_stats_related($keywords, $limit = 10, $width = 0, $break = '...', $approved = false)
     {
         global $wpdb, $table_prefix;
@@ -816,7 +832,7 @@ class SphinxSearch_FrontEnd
         }
         $sphinx->SetFilter('status', $status);
 
-        $sphinx->SetLimits(0, $limit + 30);
+        $sphinx->SetLimits(0, $limit + 30, $this->config->admin_options['sphinx_max_matches']);
         $sphinx->SetGroupBy ( "keywords_crc", SPH_GROUPBY_ATTR, "@weight desc" );
 
         $res = $sphinx->Query($keywords,
@@ -851,7 +867,7 @@ class SphinxSearch_FrontEnd
         
         $sphinx = $this->config->init_sphinx();
 
-        $sphinx->SetLimits(0, $limit + 30);
+        $sphinx->SetLimits(0, $limit + 30, $this->config->admin_options['sphinx_max_matches']);
         if ($approved){
             $status = array(1);
         } else {
@@ -1095,11 +1111,14 @@ class SphinxSearch_FrontEnd
 
   function unify_keywords($keywords)
   {
-		//replace key-buffer to key buffer
-		//replace key -buffer to key -buffer
-		//replace key- buffer to key buffer
-		//replace key - buffer to key buffer
-    return preg_replace("#([\w\S])\-([\s\w])#", "\${1} \${2}", $keywords);
+      //replace key-buffer to key buffer
+      //replace key -buffer to key -buffer
+      //replace key- buffer to key buffer
+      //replace key - buffer to key buffer
+      $keywords = preg_replace("#([\w\S])\-([\w\S])#", "\$1 \$2", $keywords);
+      $keywords = preg_replace("#([\w\S])\s\-\s([\w\S])#", "\$1 \$2", $keywords);
+      $keywords = preg_replace("#([\w\S])-\s([\w\S])#", "\$1 \$2", $keywords);
+      return $keywords;
   }
 
 }

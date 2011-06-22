@@ -136,6 +136,7 @@ class SphinxSearch{
                 add_filter('the_content', array(&$this, 'the_content'));
                 add_filter('the_author', array(&$this, 'the_author'));
                 add_filter('the_time', array(&$this, 'the_time'));
+                add_filter('get_search_query', array(&$this, 'get_search_query'));
                 add_action('wp_print_styles', array(&$this,'add_my_stylesheet'));
 
 
@@ -153,6 +154,9 @@ class SphinxSearch{
 
                 //widgets
                 add_action( 'widgets_init', array(&$this, 'load_widgets') );
+
+                //seo urls
+                add_action( 'template_redirect', array(&$this, 'sphinx_search_friendly_redirect') );
 
 	}
 
@@ -254,15 +258,20 @@ class SphinxSearch{
             if (!$this->_sphinxRunning()){
                 return $sqlQuery;
             }
-            $_GET['s'] = stripslashes($_GET['s']);
+
             //Qeuery Sphinx for Search results
-            if ($this->frontend->query() ){
+            if ($this->frontend->query(stripslashes(get_search_query())) ){
                 $this->frontend->parse_results();
             }
             //returning empty string we disabled to run default query
             //instead of that we add our owen search results 
             return '';
 	}
+        
+        function get_search_query($query)
+        {
+            return urldecode($query);
+        }
 
 
 
@@ -415,6 +424,11 @@ class SphinxSearch{
         }
     }
 
+    function get_search_string()
+    {
+        return $this->frontend->get_search_string();
+    }
+
     /**
      * @access private
      * @return boolean
@@ -454,6 +468,53 @@ class SphinxSearch{
             $ret = $sphinxService->reindex('stats');
         }
     }
+
+    function sphinx_search_friendly_redirect()
+    {
+        $redirect = true;
+        
+        if ( !is_search() ||
+                strpos( $_SERVER['REQUEST_URI'], '/wp-admin/' ) !== false ||
+                strpos( $_SERVER['REQUEST_URI'], '/search/' ) !== false ) {
+            return false;
+        } else {
+            $redirect = true;
+        }
+        
+        if ('true' == $this->config->get_option('seo_url_all')) {
+            $redirect = true;
+        }
+
+	if ( $redirect ) {
+		$query_array = array();
+		if (!empty($_GET['search_comments'])){
+			$query_array[] = "search_comments=".$_GET['search_comments'];
+		}
+		if (!empty($_GET['search_posts'])){
+			$query_array[] = "search_posts=".$_GET['search_posts'];
+		}
+		if (!empty($_GET['search_pages'])){
+			$query_array[] = "search_pages=".$_GET['search_pages'];
+		}
+		if (!empty($_GET['search_sortby'])){
+			$query_array[] = "search_sortby=".$_GET['search_sortby'];
+		}
+		$query_string = '';
+		if (!empty($query_array)){
+			$query_string = "?".implode("&",$query_array);
+		}
+                
+                $permalinkOption = get_option('permalink_structure');
+                $permPrefix = '';
+                if (false !== strpos($permalinkOption, '/index.php') ) {
+                    $permPrefix = '/index.php';
+                }
+
+		wp_redirect( home_url( $permPrefix . '/search/' . urlencode(get_query_var( 's' )) .'/' ) . $query_string );
+		exit();
+	}
+    }
+
 }
 
 register_activation_hook(__FILE__,'sphinx_plugin_activation');
@@ -468,4 +529,6 @@ function sphinx_plugin_activation()
     $sphinxInstall = new SphinxSearch_Install($config);
     $sphinxInstall->setup_sphinx_counter_tables();
 }
+
+
 

@@ -62,13 +62,13 @@ function ss_search_bar($is_sidebar = false)
 function ss_top_searches($limit = 10, $width = 0, $break = '...')
 {
     global $defaultObjectSphinxSearch;
-		
+
     $result = $defaultObjectSphinxSearch->frontend->sphinx_stats_top_ten($limit, $width, $break);
     echo "<ul>";
     foreach ($result as $res){
         echo "<li><a href='/?s=".urlencode(stripslashes($res->keywords_full))."' title='".htmlspecialchars(stripslashes($res->keywords), ENT_QUOTES)."'>".htmlspecialchars(stripslashes($res->keywords_cut), ENT_QUOTES)."</a></li>";
     }
-    echo "</ul>";
+    echo "</ul>";    
 }
 	
 function ss_latest_searches($limit = 10, $width = 0, $break = '...')
@@ -102,3 +102,38 @@ function sphinx_get_type_count($type){
     echo $defaultObjectSphinxSearch->frontend->get_type_count($type);
 }
 	
+
+
+function ss_top_searches_pager($max_per_page = 10, $show_all = false)
+{
+    global $defaultObjectSphinxSearch;
+
+    if ( $_GET['toppage'] > 1) {
+        $current = (int)$_GET['toppage'];
+        $start = (int)($_GET['toppage']-1)*$max_per_page;
+    } else {
+        $current = 1;
+        $start = 0;
+    }
+
+    $result = $defaultObjectSphinxSearch->frontend->sphinx_stats_top($max_per_page, 0, '...', false , 0, $start);
+
+    $html = "<ul>";
+    foreach ($result as $res){
+        $html .= "<li><a href='". get_bloginfo('url') ."/?s=".urlencode(stripslashes($res->keywords_full))."' title='".htmlspecialchars(stripslashes($res->keywords), ENT_QUOTES)."'>".htmlspecialchars(stripslashes($res->keywords_cut), ENT_QUOTES)."</a></li>";
+    }
+    $html .= "</ul>";
+
+    $pagination = array(
+	'base' => @add_query_arg('toppage','%#%'),
+	'format' => '',
+	'total' => $defaultObjectSphinxSearch->frontend->get_top_ten_total()/$max_per_page,
+	'current' => $current,
+	'show_all' => false,
+	'type' => 'list'
+	);
+
+    $html .= paginate_links( $pagination );
+
+    echo $html; 
+}
