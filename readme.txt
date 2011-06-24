@@ -171,7 +171,7 @@ A: Check that you haven't:
 1. any other plugins which loaded Sphinx Search API library.
 2. Sphinx Search PECL extension installed
 
-Q: I’ve got an error “Indexer: configuration files not found.” on clocking “Run Indexing & Contunue” (“Sphinx data indexing” step of Wizard).
+Q: I’ve got an error “Indexer: configuration files not found.” on clicking “Run Indexing & Contunue” (“Sphinx data indexing” step of Wizard).
 
 A: Check that the user which is running your web server (it's usually apache, www-data or smth like this)
 can run indexer/searchd and can read/write into sphinx.conf. Then run Sphinx Configuration wizard from WP Admin panel again.
