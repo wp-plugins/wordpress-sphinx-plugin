@@ -3,7 +3,7 @@ Contributors: Ivinco, Percona
 Donate link: http://www.ivinco.com/
 Tags: search, sphinx
 Requires at least: 2.0.2
-Tested up to: 3.1
+Tested up to: 3.2.1
 Stable tag: 3.3
 License: GPLv2
 
