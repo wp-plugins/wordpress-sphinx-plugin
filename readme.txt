@@ -4,7 +4,7 @@ Donate link: http://www.ivinco.com/
 Tags: search, sphinx
 Requires at least: 2.0.2
 Tested up to: 3.2.1
-Stable tag: 3.3
+Stable tag: 3.3.1
 License: GPLv2
 
 WordPress Sphinx Search Plugin allows to use Sphinx Search Server power to enable ultra-fast and feature-rich search on WordPress-based websites.
@@ -246,6 +246,10 @@ the correct value.
  We added new search mode "Freshness & Relevance" which works perfect for blogs and news sites.
 
 == Changelog ==
+= 3.3.1 =
+ * Fixed bug in search term escaping
+ * Fixed bug in redirect for friendly URLs
+
 = 3.3.0 =
  * Added friendly URLs support
  * Added ability to enable/disable friendly urls in Top/Related and Latest search terms widgets
