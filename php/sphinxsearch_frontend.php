@@ -179,6 +179,8 @@ class SphinxSearch_FrontEnd
 		//replace key - buffer to key buffer
 		$this->search_string = $this->unify_keywords($this->search_string);
 
+                $this->search_string = html_entity_decode($this->search_string);
+
 		$res = $sphinx->Query ( $this->search_string, $this->config->admin_options['sphinx_index'] );
 
 		if (empty($res["matches"]) && $this->is_simple_query($this->search_string)){
