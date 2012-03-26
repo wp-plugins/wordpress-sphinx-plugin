@@ -1125,6 +1125,8 @@ class SphinxSearch_FrontEnd
       $to   = array ( '\\\\', '\(','\)','\|','\!','\@','\~','\"', '\&', '\/', '\^', '\$', '\=' );
 
       $keywords = str_replace ( $from, $to, $keywords );
+      $keywords = str_ireplace(array('\@title', '\@body','\@category'), array('@title', '@body','@category'), $keywords);
+      
       return $keywords;
   }
 

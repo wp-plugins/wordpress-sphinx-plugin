@@ -424,6 +424,12 @@ class SphinxSearch_Install
              );";
 
         dbDelta($sql);
+
+	$sql = "insert into {$table_prefix}sph_counter values(1, 1)";
+        $wpdb->query($sql);
+
+        $sql = "insert into {$table_prefix}sph_counter values(2, 1)";
+        $wpdb->query($sql);
 	
 	//////////////////
 	//Create sph_stats
