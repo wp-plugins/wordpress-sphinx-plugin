@@ -723,15 +723,10 @@ class SphinxSearch_FrontEnd
                 $status = $wpdb->get_var($sql);
                 $status = intval($status);
 
-		$sql = "INSERT INTO
-                            {$table_prefix}sph_stats
-                            (keywords, keywords_full, date_added, status)
-                        VALUES
-                            ('".mysql_real_escape_string($keywords)."',
-                             '".mysql_real_escape_string($keywords_full)."',
-                            NOW(),
-                            $status
-                        )";
+		$sql = $wpdb->prepare(
+            "INSERT INTO {$table_prefix}sph_stats (keywords, keywords_full, date_added, status)
+            VALUES ( %s, %s, NOW(), %d )
+            ", $keywords, $keywords_full, $status);
 
 		$wpdb->query($sql);
 		return true;

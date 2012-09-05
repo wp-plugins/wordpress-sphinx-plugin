@@ -3,7 +3,7 @@
 Plugin Name: WordPress Sphinx Search Plugin
 Plugin URI: http://www.ivinco.com/software/wordpress-sphinx-search-plugin/
 Description: Power of Sphinx Search Engine for Your Blog!
-Version: 3.3.2
+Version: 3.3.3
 Author: Ivinco
 Author URI: http://www.ivinco.com/
 License: A GPL2
@@ -146,8 +146,6 @@ class SphinxSearch{
 		//action to prepare admin menu
 		add_action('admin_menu', array(&$this, 'options_page'));
                 add_action('admin_init', array(&$this, 'admin_init'));
-                add_action('admin_init', array(&$this, 'remove_actions_filters'));
-                add_action('parse_query', array(&$this, 'is_search_page'));
 
 		//frontend actions
 		add_action('wp_insert_post', array(&$this, 'wp_insert_post'));
@@ -161,13 +159,6 @@ class SphinxSearch{
                 add_action( 'template_redirect', array(&$this, 'sphinx_search_friendly_redirect') );
 
 	}
-
-        function is_search_page()
-        {
-            if(!is_search()) {
-                $this->remove_actions_filters();
-            }
-        }
 
         function add_actions_filters()
         {
@@ -241,13 +232,6 @@ class SphinxSearch{
             return $this->frontend->post_link($permalink, $post);
 	}
 
-        function update_found_posts()
-        {
-            global $wp_query;
-            $wp_query->found_posts = intval($this->frontend->post_count);
-            $wp_query->max_num_pages = ceil($wp_query->found_posts / $wp_query->query_vars['posts_per_page']);
-        }
-
 	/**
 	 * Clear content from user defined tags
 	 *
@@ -278,7 +262,6 @@ class SphinxSearch{
             //Qeuery Sphinx for Search results
             if ($this->frontend->query(stripslashes(get_search_query())) ){
                 $this->frontend->parse_results();
-                $this->update_found_posts();
             }
             //returning empty string we disabled to run default query
             //instead of that we add our owen search results
@@ -303,9 +286,6 @@ class SphinxSearch{
 		if (!$this->_sphinxRunning()){
                     return $posts;
                 }
-                remove_filter( 'posts_request', array(&$this, 'posts_request') );
-                remove_filter( 'posts_results', array(&$this, 'posts_results') );
-                remove_filter( 'found_posts', array(&$this, 'found_posts') );
 		return  $this->frontend->posts_results();
 	}
 

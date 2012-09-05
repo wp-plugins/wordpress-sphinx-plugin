@@ -246,8 +246,13 @@ the correct value.
  We added new search mode "Freshness & Relevance" which works perfect for blogs and news sites.
 
 == Changelog ==
+
+= 3.3.3 =
+ * few miscellaneous fixes in the plugin admin zone
+ * insert into sph_stat table improvement
+
 = 3.3.2 =
- * Unhooked unnecessary filters
+ * Unhooked unnecessary filters 
  * Added checking Sphinx connection on remote or local server to determine is Sphinx running
 
 = 3.3.1 =
