@@ -247,6 +247,9 @@ the correct value.
 
 == Changelog ==
 
+= 3.3.4 =
+ * fix of the bug related with searching for words that are not in the index
+
 = 3.3.3 =
  * few miscellaneous fixes in the plugin admin zone
  * insert into sph_stat table improvement

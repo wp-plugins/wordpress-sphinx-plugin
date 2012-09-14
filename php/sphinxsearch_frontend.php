@@ -421,7 +421,7 @@ class SphinxSearch_FrontEnd
 		//posts object required by WP
 		////////////////////////////
 
-		$obj_posts = null;
+		$obj_posts = array();
 		foreach($posts as $index => $post){
 			foreach($post as $var => $value){
 				$obj_posts[$index]->$var = $value;
