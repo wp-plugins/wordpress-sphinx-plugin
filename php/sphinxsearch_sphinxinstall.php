@@ -362,7 +362,7 @@ class SphinxSearch_Install
      function setup_cron_job()
      {
          $search = array(
-                '{path_to_sphinx}' => $this->config->admin_options['sphinx_path'],
+            '{path_to_sphinx}' => $this->config->admin_options['sphinx_path'],
      		'{path_to_indexer}' => $this->config->admin_options['sphinx_indexer'],
      		'{path_to_config}'   => $this->config->admin_options['sphinx_conf'],
      		'{index_prefix}' => $this->config->admin_options['sphinx_index'],
