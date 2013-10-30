@@ -247,6 +247,17 @@ the correct value.
 
 == Changelog ==
 
+= 3.7 =
+ * Added support of WP version up to 3.7.1
+ * New feature: Tags search. added missed files.
+ * New feature: Added an opportunity to search within post tags.
+ * Fixed duplicates of statistics when seo URLs are used.
+ * Fixed bug with single quote character.
+ * Updates to layout of sphinx installation wizard.
+ * Small fixes to verification logic of sphinx dirs security.
+ * There is a warning of insecure files has been added to plugin configuration section
+ * Fixed bug with unescaped html in snippets
+
 = 3.3.4 =
  * fix of the bug related with searching for words that are not in the index
 
