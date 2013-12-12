@@ -3,8 +3,8 @@ Contributors: Ivinco, Percona
 Donate link: http://www.ivinco.com/
 Tags: search, sphinx
 Requires at least: 2.0.2
-Tested up to: 3.7.1
-Stable tag: 3.7
+Tested up to: 3.8
+Stable tag: 3.8
 License: GPLv2
 
 WordPress Sphinx Search Plugin allows to use Sphinx Search Server power to enable ultra-fast and feature-rich search on WordPress-based websites.
@@ -219,13 +219,13 @@ the following SQL query during the activation process:
 `
 # in MySQL
 CREATE TABLE wp_sph_stats (
-	id int(11) unsigned NOT NULL auto_increment,
-	keywords varchar(255) NOT NULL default '',
-	date_added datetime NOT NULL default '0000-00-00 00:00:00',
-	keywords_full varchar(255) NOT NULL default '',
+    id int(11) unsigned NOT NULL auto_increment,
+    keywords varchar(255) NOT NULL default '',
+    date_added datetime NOT NULL default '0000-00-00 00:00:00',
+    keywords_full varchar(255) NOT NULL default '',
         status tinyint(1) NOT NULL DEFAULT '0',
-	PRIMARY KEY  (id),
-	KEY keywords (keywords)
+    PRIMARY KEY  (id),
+    KEY keywords (keywords)
 );
 `
 If your WordPress installation's table prefix is not "wp_", substitute it with
@@ -246,6 +246,9 @@ the correct value.
  We added new search mode "Freshness & Relevance" which works perfect for blogs and news sites.
 
 == Changelog ==
+
+= 3.8 =
+ * Updated styles to fit new default theme
 
 = 3.7 =
  * Added support of WP version up to 3.7.1

@@ -23,9 +23,8 @@ function sphinx_search_submit(form) {
 <div id="searchbar">
     <label for="s">
         <a href="http://www.ivinco.com/software/wordpress-sphinx-search/"
-            title="WordPress Sphinx Search Plugin by Ivinco"><img style="margin-top: 7px;"
-                src="<?php echo plugins_url('img/icon-ivinco.png', __FILE__ );?>"
-            alt="WordPress Sphinx Search Plugin by Ivinco" /></a> <?php _e('Search'); ?>
+            title="WordPress Sphinx Search Plugin by Ivinco"><img src="<?php echo plugins_url('img/icon-ivinco.png', __FILE__ );?>"
+                alt="WordPress Sphinx Search Plugin by Ivinco" /></a> <?php _e('Search'); ?>
     </label>
     
     <?php if ($defaultObjectSphinxSearch->config->get_option('seo_url_all') == 'true') {?>
@@ -33,7 +32,7 @@ function sphinx_search_submit(form) {
         <input type="hidden" name="s" size="15" value="<?php echo $defaultObjectSphinxSearch->get_search_string();?>"/>
         <ul>
             <li>
-                <input type="text" id="sphinx_sinput" size="15"
+                <input type="text" id="sphinx_sinput" size="25"
                        value="<?php echo $defaultObjectSphinxSearch->get_search_string();?>"/>
                 <input type="submit" id="submit" value="<?php _e('Search'); ?>" /><br/>
                 <a href="javascript:void(0);" onclick="toggle_sidebar();"
