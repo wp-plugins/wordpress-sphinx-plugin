@@ -3,7 +3,7 @@
 Plugin Name: WordPress Sphinx Search Plugin
 Plugin URI: http://www.ivinco.com/software/wordpress-sphinx-search-plugin/
 Description: Power of Sphinx Search Engine for Your Blog!
-Version: 3.8.1
+Version: 3.8.2
 Author: Ivinco
 Author URI: http://www.ivinco.com/
 License: A GPL2
@@ -471,10 +471,10 @@ class SphinxSearch{
 
     /**
      * Checks weither redirect for friendly URLs is required
-     * 
+     *
      * @static
      * @param  string $seo_url_all
-     * 
+     *
      * @return bool
      */
     static function sphinx_is_redirect_required($seo_url_all)
@@ -488,7 +488,7 @@ class SphinxSearch{
 
         return $seo_url_all == 'true';
     }
-    
+
     /**
      * Templates redirect as action of WP
      */
@@ -530,7 +530,7 @@ class SphinxSearch{
         } else {
             wp_redirect( get_option('home') . $permPrefix . '/search/' . urlencode(get_query_var( 's' )) .'/' . $query_string );
         }
-        
+
 		exit();
     }
 
