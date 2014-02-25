@@ -4,7 +4,7 @@ Donate link: http://www.ivinco.com/
 Tags: search, sphinx
 Requires at least: 2.0.2
 Tested up to: 3.8
-Stable tag: 3.8.2
+Stable tag: 3.8.3
 License: GPLv2
 
 WordPress Sphinx Search Plugin allows to use Sphinx Search Server power to enable ultra-fast and feature-rich search on WordPress-based websites.
@@ -126,6 +126,12 @@ Q: How to update the search index?
 A: The best option to update search index is to setup cron job task for it.
 Also you may manually update search indexes through WordPress Sphinx Search administrative interface.
 
+Q: I have just activated the plugin, however when I try to run the Plugin's Wizard it does not do anything. What is wrong?
+
+A: This might be jQuery version collision. Our plugin uses jQuery v1.4 and supposed to work with WordPress up to 3.8 version
+which uses jQuery v1.x (i.e. 1.10 for WP3.8). Check if your installation has custom plugin or WP is modified to use
+jQuery v2.x. If so then it will impossible to use our plugin's Wizard.
+
 Q: I have just installed and run the wizard, however I have the following error message. What to do?
 
 Can not start searchd, try to start it manually.
@@ -246,6 +252,9 @@ the correct value.
  We added new search mode "Freshness & Relevance" which works perfect for blogs and news sites.
 
 == Changelog ==
+
+= 3.8.3 =
+ * FAQ page is updated. Added description of the problem with Plugin's Wizard.
 
 = 3.8.2 =
  * Plugin will use static SSE configuration file now instead of dynamic one.
