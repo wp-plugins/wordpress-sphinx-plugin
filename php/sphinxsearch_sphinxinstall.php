@@ -35,7 +35,7 @@ class SphinxSearch_Install
 	 *
 	 * @var string
 	 */
-	var $latest_sphinx_filename = 'sphinx-0.9.9.tar.gz';
+	var $latest_sphinx_filename = 'sphinx-2.1.9.tar.gz';
 
 	/**
 	 * File location to latest Sphinx Search repository without filename
