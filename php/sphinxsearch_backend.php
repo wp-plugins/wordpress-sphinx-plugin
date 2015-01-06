@@ -262,7 +262,7 @@ class SphinxSearch_Backend {
             
             $path = str_replace($docRoot, '', $test);
             $url  = "http://{$_SERVER['HTTP_HOST']}$path";
-            $f    = @fopen($url, "r");
+            $f    = @fopen($url);
             
             if ($f) {
                 fclose($f);
