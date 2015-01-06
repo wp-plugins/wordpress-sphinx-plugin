@@ -253,6 +253,9 @@ the correct value.
 
 == Changelog ==
 
+= 3.9.5 =
+ * Plugin code was revised and tested with WordPress 4.1
+
 = 3.9.4 =
  * Plugin code was revised and tested with WordPress 4.0 Benny.
 
